@@ -49,6 +49,9 @@ public class ProductServicesImpl implements ProductService{
     @Value("${image.storage.path}")
     private String storageFolderPath;
 
+    @Value("${image.public.path}")
+    private String imagePublicPath;
+
     @Override
     public ProductResponseDTO findAll(Integer page, Integer size) {
         List<Product> productList;
@@ -96,10 +99,8 @@ public class ProductServicesImpl implements ProductService{
             }
 
             String uniqueFileName = UUID.randomUUID().toString() + "_" + imageName;
-            // Ruta donde se guardarán las imágenes en el servidor
-            String serverImagePath = "https://ecoswap-backend.onrender.com/images/" + uniqueFileName;
 
-            // Guardar la imagen en el servidor 
+            // Guardar la imagen en el servidor
             Files.write(Paths.get(storageFolderPath, uniqueFileName), image.getBytes());
 
             //Pasar el DTO a entidad para guardarlo
@@ -108,7 +109,7 @@ public class ProductServicesImpl implements ProductService{
             product.setTitle(productDTO.getTitle());
             product.setDescription(productDTO.getDescription());
             product.setCategory(productDTO.getCategory());
-            product.setImageProduct(serverImagePath);
+            product.setImageProduct(uniqueFileName);
             product.setConditionProduct(productDTO.getConditionProduct());
             product.setUser(usuarioAutenticado);
             product.setProductStatus("activo");
@@ -121,7 +122,7 @@ public class ProductServicesImpl implements ProductService{
             productDTOResponse.setCategory(savedProduct.getCategory());
             productDTOResponse.setConditionProduct(savedProduct.getConditionProduct());
             productDTOResponse.setTitle(savedProduct.getTitle());
-            productDTOResponse.setImageProduct(savedProduct.getImageProduct());
+            productDTOResponse.setImageProduct(buildImagePath(savedProduct.getImageProduct()));
 //            productDTOResponse.setUser(savedProduct.getUser().getEmail());
             productDTOResponse.setReleaseDate(savedProduct.getReleaseDate());
 
@@ -157,7 +158,7 @@ public class ProductServicesImpl implements ProductService{
         productDTOResponse.setCategory(savedProduct.getCategory());
         productDTOResponse.setConditionProduct(savedProduct.getConditionProduct());
         productDTOResponse.setTitle(savedProduct.getTitle());
-        productDTOResponse.setImageProduct(savedProduct.getImageProduct());
+        productDTOResponse.setImageProduct(buildImagePath(savedProduct.getImageProduct()));
         productDTOResponse.setReleaseDate(savedProduct.getReleaseDate());
 
         return productDTOResponse;
@@ -192,7 +193,7 @@ public class ProductServicesImpl implements ProductService{
                 product.getDescription(),
                 product.getCategory(),
                 product.getConditionProduct(),
-                product.getImageProduct(),
+                buildImagePath(product.getImageProduct()),
                 LocalDate.now(),
                 userDTO
         );
@@ -212,7 +213,7 @@ public class ProductServicesImpl implements ProductService{
                     productDTO.setDescription(product.getDescription());
                     productDTO.setCategory(product.getCategory());
                     productDTO.setConditionProduct(product.getConditionProduct());
-                    productDTO.setImageProduct(product.getImageProduct());
+                    productDTO.setImageProduct(buildImagePath(product.getImageProduct()));
                     productDTO.setReleaseDate(product.getReleaseDate());
                     return productDTO;
                 })
@@ -238,7 +239,7 @@ public class ProductServicesImpl implements ProductService{
                     productDTO.setDescription(product.getDescription());
                     productDTO.setCategory(product.getCategory());
                     productDTO.setConditionProduct(product.getConditionProduct());
-                    productDTO.setImageProduct(product.getImageProduct());
+                    productDTO.setImageProduct(buildImagePath(product.getImageProduct()));
                     productDTO.setReleaseDate(product.getReleaseDate());
                     return productDTO;
                 })
@@ -260,7 +261,7 @@ public class ProductServicesImpl implements ProductService{
                     productDTO.setDescription(product.getDescription());
                     productDTO.setCategory(product.getCategory());
                     productDTO.setConditionProduct(product.getConditionProduct());
-                    productDTO.setImageProduct(product.getImageProduct());
+                    productDTO.setImageProduct(buildImagePath(product.getImageProduct()));
                     productDTO.setReleaseDate(product.getReleaseDate());
                     return productDTO;
                 })
@@ -307,6 +308,10 @@ public class ProductServicesImpl implements ProductService{
 
     }
 
+    private String buildImagePath(String filename) {
+        return imagePublicPath + "/" + filename;
+    }
+
     private ProductDTO mapToProductDTO(Product product) {
         return new ProductDTO(
             product.getId(),
@@ -314,7 +319,7 @@ public class ProductServicesImpl implements ProductService{
             product.getDescription(),
             product.getCategory(),
             product.getConditionProduct(),
-            product.getImageProduct(),
+            buildImagePath(product.getImageProduct()),
             product.getReleaseDate(),
             new UserDTO(
                 product.getUser().getId(),

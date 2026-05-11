@@ -7,10 +7,12 @@ import com.ecoswap.ecoswap.product.models.dto.ProductDTO;
 import com.ecoswap.ecoswap.user.models.entities.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,6 +31,15 @@ public class ExchangeController {
     @PostMapping("/create-exchange-existing-product")
     public ResponseEntity<ExchangeDTO> createRequestExchangeWithExistingProduct(@RequestBody CreateExchangeRequestDTO request){
         return ResponseEntity.status(HttpStatus.CREATED).body(exchangeService.createRequestExchangeWithExistingProduct(request));
+    }
+
+    @PostMapping(value = "/create-exchange-new-product", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ExchangeDTO> createExchangeWithNewProduct(
+            @ModelAttribute ProductDTO productDTO,
+            @RequestParam("file") MultipartFile image,
+            @RequestParam("productToId") Long productToId) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(exchangeService.createExchangeWithNewProduct(productDTO, image, productToId));
     }
 
     @PostMapping("/select-exchange")

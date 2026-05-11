@@ -1,0 +1,46 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: ecoswap-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Carlos1009
+      MYSQL_DATABASE: ecoswap
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pCarlos1009"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: ecoswap-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/ecoswap
+      DB_USERNAME: root
+      DB_PASSWORD: Carlos1009
+      JWT_EXPIRATION_MINUTES: 60
+      JWT_SECRET_KEY: "ecoswap-jwt-secret-key-2024-secure-256bit"
+      IMAGE_STORAGE_PATH: /app/images
+      IMAGE_PUBLIC_PATH: http://localhost:8080/images
+      # Spring AI - apunta al Model Runner de Docker Desktop en el host
+      OPENAI_API_KEY: dummy
+      OPENAI_BASE_URL: http://host.docker.internal:12434/engines
+      OPENAI_MODEL: ai/gemma3
+    volumes:
+      - images_data:/app/images
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  images_data:
