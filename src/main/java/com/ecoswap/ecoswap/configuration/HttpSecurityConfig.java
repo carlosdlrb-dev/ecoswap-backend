@@ -70,6 +70,7 @@ public class HttpSecurityConfig {
 
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/create-exchange").permitAll();
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/create-exchange-existing-product").permitAll();
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/create-exchange-new-product").permitAll();
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/select-exchange").permitAll();
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/exchanges").permitAll();
                     authorize.requestMatchers(HttpMethod.GET, "/api/v1/exchanges/counts").permitAll();

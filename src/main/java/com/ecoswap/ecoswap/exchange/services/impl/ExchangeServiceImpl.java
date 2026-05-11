@@ -11,7 +11,12 @@ import com.ecoswap.ecoswap.prediction.services.WekaPredictionService;
 import com.ecoswap.ecoswap.product.models.dto.ProductDTO;
 import com.ecoswap.ecoswap.product.models.entities.Product;
 import com.ecoswap.ecoswap.product.repositories.ProductRepository;
+import com.ecoswap.ecoswap.product.services.ProductService;
 import com.ecoswap.ecoswap.user.models.dto.UserDTO;
+import com.ecoswap.ecoswap.user.models.entities.User;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +39,9 @@ public class ExchangeServiceImpl implements ExchangeService {
     private ProductRepository productRepository;
 
     @Autowired
+    private ProductService productService;
+
+    @Autowired
     private NotificationService notificationService;
 
     @Autowired
@@ -47,12 +55,19 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     public ExchangeDTO createRequestExchange(ExchangeDTO requestExchange) {
 
+        Product productFrom = requestExchange.getProductFrom();
+        Product productTo = requestExchange.getProductTo();
+
+        if (productFrom.getUser().getId().equals(productTo.getUser().getId())) {
+            throw new RuntimeException("No puedes proponer un intercambio con tu propio producto");
+        }
+
         Exchange exchange = new Exchange();
         exchange.setStatus("pendiente");
         exchange.setExchangeRequestedAt(LocalDateTime.now());
         exchange.setExchangeRespondedAt(LocalDateTime.now());
-        exchange.setProductTo(requestExchange.getProductTo());
-        exchange.setProductFrom(requestExchange.getProductFrom());
+        exchange.setProductTo(productTo);
+        exchange.setProductFrom(productFrom);
 
         exchangeRepository.save(exchange);
 
@@ -88,8 +103,9 @@ public class ExchangeServiceImpl implements ExchangeService {
         Product productTo = productRepository.findById(request.getProductToId())
                 .orElseThrow(() -> new RuntimeException("El producto solicitado no existe"));
 
-        // Verificar que el producto a intercambiar pertenece al usuario actual
-        // TODO: Agregar validación de usuario cuando tengas el contexto de seguridad
+        if (productFrom.getUser().getId().equals(productTo.getUser().getId())) {
+            throw new RuntimeException("No puedes proponer un intercambio con tu propio producto");
+        }
 
         // Verificar que el producto esté activo y disponible para intercambio
         if (!"activo".equals(productFrom.getProductStatus())) {
@@ -241,6 +257,50 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
 
         exchangeRepository.save(exchange);
+
+        return new ExchangeDTO(exchange.getId(), exchange.getProductFrom(), exchange.getProductTo(),
+                exchange.getStatus(), exchange.getExchangeRequestedAt(), exchange.getExchangeRespondedAt());
+    }
+
+    @Override
+    @Transactional
+    public ExchangeDTO createExchangeWithNewProduct(ProductDTO productDTO, MultipartFile image, Long productToId) {
+        // 1. Validaciones primero, antes de tocar disco o BD
+        Product productTo = productRepository.findById(productToId)
+                .orElseThrow(() -> new RuntimeException("El producto solicitado no existe"));
+
+        if (!"activo".equals(productTo.getProductStatus())) {
+            throw new RuntimeException("El producto solicitado no está disponible");
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User authenticatedUser = (User) auth.getPrincipal();
+
+        if (authenticatedUser.getId().equals(productTo.getUser().getId())) {
+            throw new RuntimeException("No puedes proponer un intercambio con tu propio producto");
+        }
+
+        // 2. Todas las validaciones pasaron: crear producto y exchange de forma atómica
+        ProductDTO createdProductDTO = productService.createProduct(productDTO, image);
+
+        Product productFrom = productRepository.findById(createdProductDTO.getId())
+                .orElseThrow(() -> new RuntimeException("Error interno al recuperar el producto creado"));
+
+        Exchange exchange = new Exchange();
+        exchange.setStatus("pendiente");
+        exchange.setExchangeRequestedAt(LocalDateTime.now());
+        exchange.setExchangeRespondedAt(LocalDateTime.now());
+        exchange.setProductFrom(productFrom);
+        exchange.setProductTo(productTo);
+        exchangeRepository.save(exchange);
+
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(productTo.getUser().getId());
+        userDTO.setName(productTo.getUser().getName());
+        userDTO.setEmail(productTo.getUser().getEmail());
+        userDTO.setAddress(productTo.getUser().getAddress());
+        userDTO.setCellphoneNumber(productTo.getUser().getCellphoneNumber());
+        notificationService.sendNotification(userDTO, "Tienes una nueva solicitud de intercambio para tu producto: " + productTo.getTitle());
 
         return new ExchangeDTO(exchange.getId(), exchange.getProductFrom(), exchange.getProductTo(),
                 exchange.getStatus(), exchange.getExchangeRequestedAt(), exchange.getExchangeRespondedAt());
